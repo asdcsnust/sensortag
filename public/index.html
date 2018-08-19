@@ -1,0 +1,111 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Master Control</title>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+    <script src="jquery.knob.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        .info{
+            width: 300px;
+            float: left;
+            position: relative;
+        }
+        .tag {
+            width: 500px;
+            overflow: auto;
+            position: relative;
+
+        }
+        .tag img{
+            float: left;
+        }
+    </style>
+</head>
+
+<body>
+    <a href="sensortag.db">DB download</a>
+    <button class="discover" id="discovery">discovery</button>
+    <button class="discover" id="stopDiscovery" style="display: none">stop discovery</button>
+    <div id="tags">
+    </div>
+    <div id="logs">
+    </div>
+    
+    <script>
+        var socket = io();
+        var tag = function(){
+            var element =$("<div>")
+            element.attr("class", 'info');
+            element.append($("<div>").attr('class','objTemp'));
+            element.append($("<div>").attr('class','ambiTemp'));
+            element.append($("<div>").attr('class','accMeter'));
+            element.append($("<div>").attr('class','gyro'));
+            element.append($("<div>").attr('class','humiTemp'));
+            element.append($("<div>").attr('class','humidity'));
+            element.append($("<div>").attr('class','battLevel'));
+            return element;
+        }
+        socket.on("tagList", function(data) {
+            for(var i=0; i<data.tags.length; i++){
+                
+                if($("#"+data.tags[i].id).length == 0){
+                    console.log(i);
+                    $("#tags").append("<div class='tag' id="+data.tags[i].id+"></div>");
+                    $("#"+data.tags[i].id).append("<img src='/images/sensortag_off.png'/>");
+                    $("#"+data.tags[i].id).append("<img style='width:25px; top:30px; left: 170px; position:absolute;'src='/images/ble_connect.png'/>")
+                    $("#"+data.tags[i].id + ".tag").append(tag());
+                }
+            }
+            console.log(data);
+        });
+        socket.on("connected", function(data) {
+            console.log(data.msg);
+        });
+        socket.on("logs", function(data) {
+        });
+        socket.on("connecttt", function(data) {
+            $("#"+data+" button").hide();
+            console.log(data)
+            $("#"+data+" img").attr("src","/images/sensortag_off.png");
+            $("#"+data).append("<img style='width:25px; top:30px; left: 170px; position:absolute;'src='/images/ble_connect.png'/>")
+            $("#"+data + ".tag").append(tag());
+        });
+        socket.on("tags", function(data) {
+            $("#tags").append("<div class='tag' id="+data+"><img src='/images/sensortag_on_off.gif'/><button class='connect' disabled>connect</button></div>")
+            $(".connect").off("click").on("click", function(){
+                socket.emit("connectSensortag", $(this).parent().attr("id"));
+                return false;
+            })
+        });
+        socket.on("data", function(data){
+            $("#"+data.id+" ."+data.type).html(data.type+":"+data.value);
+        })
+        socket.on("disconnect", function(data) {
+            $("#"+data).remove()
+        });
+        $(document).ready(function() {
+            $("#discovery").click(function(){
+                console.log("discovery");
+                socket.emit("discovery",{msg: "discovery"});
+                return false;
+            })
+            $("#stopDiscovery").click(function(){
+                console.log("stopDiscovery");
+                socket.emit("stopDiscovery",{msg: "stopDiscovery"});
+                $(".connect").prop("disabled", false);
+                return false;
+            })
+            $(".discover").click(function(){
+                $(".discover").toggle();
+                return false;
+            })
+
+        });
+    </script>
+</body>
+
+</html>
